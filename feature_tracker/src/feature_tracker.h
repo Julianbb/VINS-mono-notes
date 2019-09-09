@@ -50,15 +50,15 @@ class FeatureTracker
     cv::Mat fisheye_mask;
     cv::Mat prev_img, cur_img, forw_img;
     vector<cv::Point2f> n_pts;
-    vector<cv::Point2f> prev_pts, cur_pts, forw_pts;
-    vector<cv::Point2f> prev_un_pts, cur_un_pts;
-    vector<cv::Point2f> pts_velocity;
-    vector<int> ids;
-    vector<int> track_cnt;
-    map<int, cv::Point2f> cur_un_pts_map;
-    map<int, cv::Point2f> prev_un_pts_map;
+    vector<cv::Point2f> prev_pts, cur_pts, forw_pts; 
+    vector<cv::Point2f> prev_un_pts, cur_un_pts; // 去畸变之后的点(归一化平面)
+    vector<cv::Point2f> pts_velocity;   // 去畸变之后feature的速度
+    vector<int> ids; //feature id
+    vector<int> track_cnt; //feature 被跟踪的次数
+    map<int, cv::Point2f> cur_un_pts_map; // // id, 去畸变之后的点(归一化平面)
+    map<int, cv::Point2f> prev_un_pts_map; //
     camodocal::CameraPtr m_camera;
-    double cur_time;
+    double cur_time; // 计算feature速度用的， pre-cur = dt
     double prev_time;
 
     static int n_id;

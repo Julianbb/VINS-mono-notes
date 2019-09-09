@@ -3,11 +3,11 @@
 std::string IMAGE_TOPIC;
 std::string IMU_TOPIC;
 std::vector<std::string> CAM_NAMES;
-std::string FISHEYE_MASK;
-int MAX_CNT;
-int MIN_DIST;
+std::string FISHEYE_MASK; //鱼眼相机的mask路径
+int MAX_CNT;  // max feature number in feature tracking
+int MIN_DIST; //特征点之间最小距离，通过设置两个相邻特征之间像素的最小间隔来执行均匀的特征分布
 int WINDOW_SIZE;
-int FREQ;
+int FREQ;  //帧率
 double F_THRESHOLD;
 int SHOW_TRACK;
 int STEREO_TRACK;
