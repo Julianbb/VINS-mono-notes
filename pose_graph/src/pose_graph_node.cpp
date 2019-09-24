@@ -24,9 +24,9 @@
 #define SKIP_FIRST_CNT 10
 using namespace std;
 
-queue<sensor_msgs::ImageConstPtr> image_buf;
-queue<sensor_msgs::PointCloudConstPtr> point_buf;
-queue<nav_msgs::Odometry::ConstPtr> pose_buf;
+queue<sensor_msgs::ImageConstPtr> image_buf;//原始图像数据
+queue<sensor_msgs::PointCloudConstPtr> point_buf; //世界坐标系下的地图点云
+queue<nav_msgs::Odometry::ConstPtr> pose_buf;//当前帧的 pose
 queue<Eigen::Vector3d> odometry_buf;
 std::mutex m_buf;
 std::mutex m_process;
@@ -66,6 +66,8 @@ CameraPoseVisualization cameraposevisual(1, 0, 0, 1);
 Eigen::Vector3d last_t(-100, -100, -100);
 double last_image_time = -1;
 
+
+//支持5次复位操作
 void new_sequence()
 {
     printf("new sequence\n");
@@ -90,6 +92,8 @@ void new_sequence()
     m_buf.unlock();
 }
 
+
+//存 image_buf
 void image_callback(const sensor_msgs::ImageConstPtr &image_msg)
 {
     //ROS_INFO("image_callback!");
@@ -103,6 +107,7 @@ void image_callback(const sensor_msgs::ImageConstPtr &image_msg)
     // detect unstable camera stream
     if (last_image_time == -1)
         last_image_time = image_msg->header.stamp.toSec();
+    // 图像帧不连续, 这时候相当于复位操作 
     else if (image_msg->header.stamp.toSec() - last_image_time > 1.0 || image_msg->header.stamp.toSec() < last_image_time)
     {
         ROS_WARN("image discontinue! detect a new sequence!");
@@ -111,6 +116,9 @@ void image_callback(const sensor_msgs::ImageConstPtr &image_msg)
     last_image_time = image_msg->header.stamp.toSec();
 }
 
+
+
+//将点云存 point_buf
 void point_callback(const sensor_msgs::PointCloudConstPtr &point_msg)
 {
     //ROS_INFO("point_callback!");
@@ -131,6 +139,9 @@ void point_callback(const sensor_msgs::PointCloudConstPtr &point_msg)
     */
 }
 
+
+
+//将图像帧位姿存入 pose_buf
 void pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 {
     //ROS_INFO("pose_callback!");
@@ -150,6 +161,9 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
     */
 }
 
+
+
+//
 void imu_forward_callback(const nav_msgs::Odometry::ConstPtr &forward_msg)
 {
     if (VISUALIZE_IMU_FORWARD)
@@ -167,6 +181,7 @@ void imu_forward_callback(const nav_msgs::Odometry::ConstPtr &forward_msg)
         vio_t = posegraph.r_drift * vio_t + posegraph.t_drift;
         vio_q = posegraph.r_drift * vio_q;
 
+
         Vector3d vio_t_cam;
         Quaterniond vio_q_cam;
         vio_t_cam = vio_t + vio_q * tic;
@@ -177,6 +192,10 @@ void imu_forward_callback(const nav_msgs::Odometry::ConstPtr &forward_msg)
         cameraposevisual.publish_by(pub_camera_pose_visual, forward_msg->header);
     }
 }
+
+
+
+//将重定位帧的相对位姿放入loop_info，进行回环跟新
 void relo_relative_pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 {
     Vector3d relative_t = Vector3d(pose_msg->pose.pose.position.x,
@@ -198,6 +217,8 @@ void relo_relative_pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 
 }
 
+
+//得到 imu和cam的位姿
 void vio_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 {
     //ROS_INFO("vio_callback!");
@@ -278,6 +299,9 @@ void vio_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
     }
 }
 
+
+
+//得到外参数
 void extrinsic_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 {
     m_process.lock();
@@ -291,17 +315,21 @@ void extrinsic_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
     m_process.unlock();
 }
 
+
+
+
 void process()
 {
     if (!LOOP_CLOSURE)
         return;
     while (true)
     {
+        
         sensor_msgs::ImageConstPtr image_msg = NULL;
         sensor_msgs::PointCloudConstPtr point_msg = NULL;
         nav_msgs::Odometry::ConstPtr pose_msg = NULL;
 
-        // find out the messages with same time stamp
+        //取出相同时间戳的 image_msg point_msg pose_msg
         m_buf.lock();
         if(!image_buf.empty() && !point_buf.empty() && !pose_buf.empty())
         {
@@ -382,6 +410,8 @@ void process()
                                      pose_msg->pose.pose.orientation.x,
                                      pose_msg->pose.pose.orientation.y,
                                      pose_msg->pose.pose.orientation.z).toRotationMatrix();
+
+             //将距上一关键帧距离（平移向量的模）超过SKIP_DIS的图像创建为关键帧
             if((T - last_t).norm() > SKIP_DIS)
             {
                 vector<cv::Point3f> point_3d; 
@@ -410,7 +440,7 @@ void process()
 
                     //printf("u %f, v %f \n", p_2d_uv.x, p_2d_uv.y);
                 }
-
+                //创建关键帧
                 KeyFrame* keyframe = new KeyFrame(pose_msg->header.stamp.toSec(), frame_index, T, R, image,
                                    point_3d, point_2d_uv, point_2d_normal, point_id, sequence);   
                 m_process.lock();
@@ -457,11 +487,11 @@ int main(int argc, char **argv)
     ros::NodeHandle n("~");
     posegraph.registerPub(n);
 
-    // read param
+    // 从launch文件读取参数和参数文件config中的参数
     n.getParam("visualization_shift_x", VISUALIZATION_SHIFT_X);
     n.getParam("visualization_shift_y", VISUALIZATION_SHIFT_Y);
-    n.getParam("skip_cnt", SKIP_CNT);
-    n.getParam("skip_dis", SKIP_DIS);
+    n.getParam("skip_cnt", SKIP_CNT); //SKIP_CNT为之后运行process()内循环的间隔
+    n.getParam("skip_dis", SKIP_DIS); //SKIP_DIS为判断是否构建关键帧的距离标准
     std::string config_file;
     n.getParam("config_file", config_file);
     cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
@@ -470,8 +500,8 @@ int main(int argc, char **argv)
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
 
-    double camera_visual_size = fsSettings["visualize_camera_size"];
-    cameraposevisual.setScale(camera_visual_size);
+    double camera_visual_size = fsSettings["visualize_camera_size"];//为可视化界面图像的尺寸
+    cameraposevisual.setScale(camera_visual_size); 
     cameraposevisual.setLineWidth(camera_visual_size / 10.0);
 
 
@@ -482,15 +512,20 @@ int main(int argc, char **argv)
     {
         ROW = fsSettings["image_height"];
         COL = fsSettings["image_width"];
-        std::string pkg_path = ros::package::getPath("pose_graph");
-        string vocabulary_file = pkg_path + "/../support_files/brief_k10L6.bin";
-        cout << "vocabulary_file" << vocabulary_file << endl;
-        posegraph.loadVocabulary(vocabulary_file);
 
-        BRIEF_PATTERN_FILE = pkg_path + "/../support_files/brief_pattern.yml";
+        //加载字典
+        std::string pkg_path = ros::package::getPath("pose_graph");
+        string vocabulary_file = pkg_path + "/../support_files/brief_k10L6.bin"; //字典文件
+        cout << "vocabulary_file" << vocabulary_file << endl;
+        posegraph.loadVocabulary(vocabulary_file); 
+
+        //读取BRIEF描述子的模板文件
+        BRIEF_PATTERN_FILE = pkg_path + "/../support_files/brief_pattern.yml"; 
         cout << "BRIEF_PATTERN_FILE" << BRIEF_PATTERN_FILE << endl;
         m_camera = camodocal::CameraFactory::instance()->generateCameraFromYamlFile(config_file.c_str());
 
+
+        // 
         fsSettings["image_topic"] >> IMAGE_TOPIC;        
         fsSettings["pose_graph_save_path"] >> POSE_GRAPH_SAVE_PATH;
         fsSettings["output_path"] >> VINS_RESULT_PATH;
@@ -500,6 +535,7 @@ int main(int argc, char **argv)
         FileSystemHelper::createDirectoryIfNotExists(POSE_GRAPH_SAVE_PATH.c_str());
         FileSystemHelper::createDirectoryIfNotExists(VINS_RESULT_PATH.c_str());
 
+        //
         VISUALIZE_IMU_FORWARD = fsSettings["visualize_imu_forward"];
         LOAD_PREVIOUS_POSE_GRAPH = fsSettings["load_previous_pose_graph"];
         FAST_RELOCALIZATION = fsSettings["fast_relocalization"];
@@ -508,6 +544,8 @@ int main(int argc, char **argv)
         fout.close();
         fsSettings.release();
 
+
+        //按需求加载先前位姿图（LOAD_PREVIOUS_POSE_GRAPH=1）
         if (LOAD_PREVIOUS_POSE_GRAPH)
         {
             printf("load pose graph\n");
@@ -526,6 +564,8 @@ int main(int argc, char **argv)
 
     fsSettings.release();
 
+
+    //订阅话题，执行各自的回调函数
     ros::Subscriber sub_imu_forward = n.subscribe("/vins_estimator/imu_propagate", 2000, imu_forward_callback);
     ros::Subscriber sub_vio = n.subscribe("/vins_estimator/odometry", 2000, vio_callback);
     ros::Subscriber sub_image = n.subscribe(IMAGE_TOPIC, 2000, image_callback);
@@ -534,13 +574,16 @@ int main(int argc, char **argv)
     ros::Subscriber sub_point = n.subscribe("/vins_estimator/keyframe_point", 2000, point_callback);
     ros::Subscriber sub_relo_relative_pose = n.subscribe("/vins_estimator/relo_relative_pose", 2000, relo_relative_pose_callback);
 
+
+    //发布的话题
     pub_match_img = n.advertise<sensor_msgs::Image>("match_image", 1000);
     pub_camera_pose_visual = n.advertise<visualization_msgs::MarkerArray>("camera_pose_visual", 1000);
     pub_key_odometrys = n.advertise<visualization_msgs::Marker>("key_odometrys", 1000);
     pub_vio_path = n.advertise<nav_msgs::Path>("no_loop_path", 1000);
     pub_match_points = n.advertise<sensor_msgs::PointCloud>("match_points", 100);
 
-    std::thread measurement_process;
+    //创建两个线程
+    std::thread measurement_process; 
     std::thread keyboard_command_process;
 
     measurement_process = std::thread(process);

@@ -94,11 +94,11 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
     for (int i = 0; i < NUM_OF_CAM; i++)
     {
         ROS_DEBUG("processing camera %d", i);
-        if (i != 1 || !STEREO_TRACK)  //针对单目相机读入图像
+        if (i != 1 || !STEREO_TRACK)  //针对单目相机读入图像， STEREO_TRACK=1 是双目相机
             trackerData[i].readImage(ptr->image.rowRange(ROW * i, ROW * (i + 1)), img_msg->header.stamp.toSec());
         else
         {
-            if (EQUALIZE) //直方图均衡
+            if (EQUALIZE) //自适应直方图均衡
             {
                 cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
                 clahe->apply(ptr->image.rowRange(ROW * i, ROW * (i + 1)), trackerData[i].cur_img);

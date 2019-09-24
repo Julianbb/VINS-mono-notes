@@ -106,7 +106,7 @@ void BRIEF::compute(const cv::Mat &image,
 }
 
 // ---------------------------------------------------------------------------
-
+//随机生成 m_bit_length个在patch_size内的点对
 void BRIEF::generateTestPoints()
 {  
   m_x1.resize(m_bit_length);

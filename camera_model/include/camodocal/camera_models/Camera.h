@@ -30,24 +30,30 @@ public:
         Parameters(ModelType modelType, const std::string& cameraName,
                    int w, int h);
 
+
+
         ModelType& modelType(void);
         std::string& cameraName(void);
         int& imageWidth(void);
         int& imageHeight(void);
+
+
 
         ModelType modelType(void) const;
         const std::string& cameraName(void) const;
         int imageWidth(void) const;
         int imageHeight(void) const;
 
+
         int nIntrinsics(void) const;
+
 
         virtual bool readFromYamlFile(const std::string& filename) = 0;
         virtual void writeToYamlFile(const std::string& filename) const = 0;
 
     protected:
         ModelType m_modelType;
-        int m_nIntrinsics;
+        int m_nIntrinsics; //内参的数量, 比如Pinhole 8个内参
         std::string m_cameraName;
         int m_imageWidth;
         int m_imageHeight;
@@ -111,21 +117,25 @@ public:
      *
      * \param P1 first 3D point coordinates
      * \param P2 second 3D point coordinates
-     * \return euclidean distance in the plane
+     * \return euclidean distance in the plane(image)
      */
+    // 两个3D点到 投影2D, 计算2D之间的欧式距离
     double reprojectionDist(const Eigen::Vector3d& P1, const Eigen::Vector3d& P2) const;
 
+
+    //计算总的平均误差:总误差/总点数
     double reprojectionError(const std::vector< std::vector<cv::Point3f> >& objectPoints,
                              const std::vector< std::vector<cv::Point2f> >& imagePoints,
                              const std::vector<cv::Mat>& rvecs,
                              const std::vector<cv::Mat>& tvecs,
                              cv::OutputArray perViewErrors = cv::noArray()) const;
 
+    // 计算P 的重投影误差
     double reprojectionError(const Eigen::Vector3d& P,
                              const Eigen::Quaterniond& camera_q,
                              const Eigen::Vector3d& camera_t,
                              const Eigen::Vector2d& observed_p) const;
-
+    // 3D->2D投影
     void projectPoints(const std::vector<cv::Point3f>& objectPoints,
                        const cv::Mat& rvec,
                        const cv::Mat& tvec,

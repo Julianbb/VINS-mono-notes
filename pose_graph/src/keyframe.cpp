@@ -10,6 +10,8 @@ static void reduceVector(vector<Derived> &v, vector<uchar> status)
     v.resize(j);
 }
 
+
+
 // create keyframe online
 KeyFrame::KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3d &_vio_R_w_i, cv::Mat &_image,
 		           vector<cv::Point3f> &_point_3d, vector<cv::Point2f> &_point_2d_uv, vector<cv::Point2f> &_point_2d_norm,
@@ -39,6 +41,7 @@ KeyFrame::KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3
 	if(!DEBUG_IMAGE)
 		image.release();
 }
+
 
 // load previous keyframe
 KeyFrame::KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3d &_vio_R_w_i, Vector3d &_T_w_i, Matrix3d &_R_w_i,
@@ -72,6 +75,7 @@ KeyFrame::KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3
 }
 
 
+
 void KeyFrame::computeWindowBRIEFPoint()
 {
 	BriefExtractor extractor(BRIEF_PATTERN_FILE.c_str());
@@ -83,6 +87,8 @@ void KeyFrame::computeWindowBRIEFPoint()
 	}
 	extractor(image, window_keypoints, window_brief_descriptors);
 }
+
+
 
 void KeyFrame::computeBRIEFPoint()
 {
@@ -112,10 +118,13 @@ void KeyFrame::computeBRIEFPoint()
 	}
 }
 
+
+
 void BriefExtractor::operator() (const cv::Mat &im, vector<cv::KeyPoint> &keys, vector<BRIEF::bitset> &descriptors) const
 {
   m_brief.compute(im, keys, descriptors);
 }
+
 
 
 bool KeyFrame::searchInAera(const BRIEF::bitset window_descriptor,
@@ -126,7 +135,7 @@ bool KeyFrame::searchInAera(const BRIEF::bitset window_descriptor,
                             cv::Point2f &best_match_norm)
 {
     cv::Point2f best_pt;
-    int bestDist = 128;
+    int bestDist = 128; //初始汉明距离
     int bestIndex = -1;
     for(int i = 0; i < (int)descriptors_old.size(); i++)
     {
@@ -139,7 +148,7 @@ bool KeyFrame::searchInAera(const BRIEF::bitset window_descriptor,
         }
     }
     //printf("best dist %d", bestDist);
-    if (bestIndex != -1 && bestDist < 80)
+    if (bestIndex != -1 && bestDist < 80) //才是正确的
     {
       best_match = keypoints_old[bestIndex].pt;
       best_match_norm = keypoints_old_norm[bestIndex].pt;
@@ -148,6 +157,8 @@ bool KeyFrame::searchInAera(const BRIEF::bitset window_descriptor,
     else
       return false;
 }
+
+
 
 void KeyFrame::searchByBRIEFDes(std::vector<cv::Point2f> &matched_2d_old,
 								std::vector<cv::Point2f> &matched_2d_old_norm,
@@ -177,9 +188,10 @@ void KeyFrame::FundmantalMatrixRANSAC(const std::vector<cv::Point2f> &matched_2d
 {
 	int n = (int)matched_2d_cur_norm.size();
 	for (int i = 0; i < n; i++)
-		status.push_back(0);
-    if (n >= 8)
+		status.push_back(0); //先将所有status置0
+    if (n >= 8)  //只有大于8个点，才能进行(8点法)
     {
+		//由归一化平面点得到像素点
         vector<cv::Point2f> tmp_cur(n), tmp_old(n);
         for (int i = 0; i < (int)matched_2d_cur_norm.size(); i++)
         {
@@ -193,9 +205,12 @@ void KeyFrame::FundmantalMatrixRANSAC(const std::vector<cv::Point2f> &matched_2d
             tmp_y = FOCAL_LENGTH * matched_2d_old_norm[i].y + ROW / 2.0;
             tmp_old[i] = cv::Point2f(tmp_x, tmp_y);
         }
+		//去outliers
         cv::findFundamentalMat(tmp_cur, tmp_old, cv::FM_RANSAC, 3.0, 0.9, status);
     }
 }
+
+
 
 void KeyFrame::PnPRANSAC(const vector<cv::Point2f> &matched_2d_old_norm,
                          const std::vector<cv::Point3f> &matched_3d,
@@ -414,7 +429,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	    reduceVector(matched_3d, status);
 	    reduceVector(matched_id, status);
 	    #if 1
-	    	if (DEBUG_IMAGE)
+	    	if (DEBUG_IMAGE)  //画图
 	        {
 	        	int gap = 10;
 	        	cv::Mat gap_image(ROW, gap, CV_8UC1, cv::Scalar(255, 255, 255));
@@ -453,7 +468,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	                    << old_kf->index << "-" << "3pnp_match.jpg";
 	            cv::imwrite( path.str().c_str(), loop_match_img);
 	            */
-	            if ((int)matched_2d_cur.size() > MIN_LOOP_NUM)
+	            if ((int)matched_2d_cur.size() > MIN_LOOP_NUM) //发布话题
 	            {
 	            	/*
 	            	cv::imshow("loop connection",loop_match_img);  
@@ -477,7 +492,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	    //printf("PNP relative\n");
 	    //cout << "pnp relative_t " << relative_t.transpose() << endl;
 	    //cout << "pnp relative_yaw " << relative_yaw << endl;
-	    if (abs(relative_yaw) < 30.0 && relative_t.norm() < 20.0)
+	    if (abs(relative_yaw) < 30.0 && relative_t.norm() < 20.0) //TODO:判断依据？
 	    {
 
 	    	has_loop = true;
@@ -527,6 +542,7 @@ int KeyFrame::HammingDis(const BRIEF::bitset &a, const BRIEF::bitset &b)
     return dis;
 }
 
+
 void KeyFrame::getVioPose(Eigen::Vector3d &_T_w_i, Eigen::Matrix3d &_R_w_i)
 {
     _T_w_i = vio_T_w_i;
@@ -553,10 +569,12 @@ void KeyFrame::updateVioPose(const Eigen::Vector3d &_T_w_i, const Eigen::Matrix3
 	R_w_i = vio_R_w_i;
 }
 
+
 Eigen::Vector3d KeyFrame::getLoopRelativeT()
 {
     return Eigen::Vector3d(loop_info(0), loop_info(1), loop_info(2));
 }
+
 
 Eigen::Quaterniond KeyFrame::getLoopRelativeQ()
 {
@@ -567,6 +585,7 @@ double KeyFrame::getLoopRelativeYaw()
 {
     return loop_info(7);
 }
+
 
 void KeyFrame::updateLoop(Eigen::Matrix<double, 8, 1 > &_loop_info)
 {

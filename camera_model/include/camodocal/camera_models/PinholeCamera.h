@@ -31,7 +31,8 @@ public:
         double& cx(void);
         double& cy(void);
 
-        double xi(void) const;
+        //定义一个const 类， 调用的这些函数，
+        double xi(void) const; //对于pinhole 没有
         double k1(void) const;
         double k2(void) const;
         double p1(void) const;
@@ -44,8 +45,8 @@ public:
         bool readFromYamlFile(const std::string& filename);
         void writeToYamlFile(const std::string& filename) const;
 
-        Parameters& operator=(const Parameters& other);
-        friend std::ostream& operator<< (std::ostream& out, const Parameters& params);
+        Parameters& operator=(const Parameters& other);  //拷贝构造
+        friend std::ostream& operator<< (std::ostream& out, const Parameters& params); //打印相机参数
 
     private:
         double m_k1;
@@ -58,6 +59,8 @@ public:
         double m_cy;
     };
 
+
+//------------------------构造------------------------------------
     PinholeCamera();
 
     /**
@@ -71,11 +74,15 @@ public:
     * \brief Constructor from the projection model parameters
     */
     PinholeCamera(const Parameters& params);
+//------------------------------------------------------------------
+
 
     Camera::ModelType modelType(void) const;
     const std::string& cameraName(void) const;
     int imageWidth(void) const;
     int imageHeight(void) const;
+
+
 
     void estimateIntrinsics(const cv::Size& boardSize,
                             const std::vector< std::vector<cv::Point3f> >& objectPoints,
@@ -85,7 +92,7 @@ public:
     virtual void liftSphere(const Eigen::Vector2d& p, Eigen::Vector3d& P) const;
     //%output P
 
-    // Lift points from the image plane to the projective space
+    // Lift points from the image plane to the projective space(针孔：归一化平面)
     void liftProjective(const Eigen::Vector2d& p, Eigen::Vector3d& P) const;
     //%output P
 
@@ -99,6 +106,7 @@ public:
                       Eigen::Matrix<double,2,3>& J) const;
     //%output p
     //%output J
+
 
     void undistToPlane(const Eigen::Vector2d& p_u, Eigen::Vector2d& p) const;
     //%output p
@@ -133,14 +141,18 @@ public:
     std::string parametersToString(void) const;
 
 private:
-    Parameters mParameters;
+    Parameters mParameters; // K内参
 
-    double m_inv_K11, m_inv_K13, m_inv_K22, m_inv_K23;
+    double m_inv_K11, m_inv_K13, m_inv_K22, m_inv_K23;  //内参的逆， 将像素 -> 归一化平面
     bool m_noDistortion;
 };
 
 typedef boost::shared_ptr<PinholeCamera> PinholeCameraPtr;
 typedef boost::shared_ptr<const PinholeCamera> PinholeCameraConstPtr;
+
+
+
+
 
 template <typename T>
 void

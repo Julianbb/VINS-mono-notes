@@ -119,6 +119,8 @@ Camera::mask(void) const
     return m_mask;
 }
 
+
+
 void
 Camera::estimateExtrinsics(const std::vector<cv::Point3f>& objectPoints,
                            const std::vector<cv::Point2f>& imagePoints,
@@ -140,6 +142,8 @@ Camera::estimateExtrinsics(const std::vector<cv::Point3f>& objectPoints,
     cv::solvePnP(objectPoints, Ms, cv::Mat::eye(3, 3, CV_64F), cv::noArray(), rvec, tvec);
 }
 
+
+
 double
 Camera::reprojectionDist(const Eigen::Vector3d& P1, const Eigen::Vector3d& P2) const
 {
@@ -151,6 +155,10 @@ Camera::reprojectionDist(const Eigen::Vector3d& P1, const Eigen::Vector3d& P2) c
     return (p1 - p2).norm();
 }
 
+
+// 计算总的平均误差 ： 总误差/总点数
+// objectPoints,imagePoints他们是多张图像， 每张图像多个点
+// rvecs, tvecs, 每张图的位姿
 double
 Camera::reprojectionError(const std::vector< std::vector<cv::Point3f> >& objectPoints,
                           const std::vector< std::vector<cv::Point2f> >& imagePoints,
@@ -176,14 +184,14 @@ Camera::reprojectionError(const std::vector< std::vector<cv::Point3f> >& objectP
 
         pointsSoFar += pointCount;
 
-        std::vector<cv::Point2f> estImagePoints;
+        std::vector<cv::Point2f> estImagePoints; //投影点(估计的)
         projectPoints(objectPoints.at(i), rvecs.at(i), tvecs.at(i),
                       estImagePoints);
 
         double err = 0.0;
         for (size_t j = 0; j < imagePoints.at(i).size(); ++j)
         {
-            err += cv::norm(imagePoints.at(i).at(j) - estImagePoints.at(j));
+            err += cv::norm(imagePoints.at(i).at(j) - estImagePoints.at(j)); // 计算观测和估计之间误差
         }
 
         if (computePerViewErrors)
@@ -196,6 +204,9 @@ Camera::reprojectionError(const std::vector< std::vector<cv::Point3f> >& objectP
 
     return totalErr / pointsSoFar;
 }
+
+
+
 
 double
 Camera::reprojectionError(const Eigen::Vector3d& P,
@@ -211,6 +222,10 @@ Camera::reprojectionError(const Eigen::Vector3d& P,
     return (p - observed_p).norm();
 }
 
+
+
+
+
 void
 Camera::projectPoints(const std::vector<cv::Point3f>& objectPoints,
                       const cv::Mat& rvec,
@@ -218,11 +233,11 @@ Camera::projectPoints(const std::vector<cv::Point3f>& objectPoints,
                       std::vector<cv::Point2f>& imagePoints) const
 {
     // project 3D object points to the image plane
-    imagePoints.reserve(objectPoints.size());
+    imagePoints.reserve(objectPoints.size()); 
 
     //double
     cv::Mat R0;
-    cv::Rodrigues(rvec, R0);
+    cv::Rodrigues(rvec, R0); // 将旋转向量-> R
 
     Eigen::MatrixXd R(3,3);
     R << R0.at<double>(0,0), R0.at<double>(0,1), R0.at<double>(0,2),
@@ -231,6 +246,8 @@ Camera::projectPoints(const std::vector<cv::Point3f>& objectPoints,
 
     Eigen::Vector3d t;
     t << tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2);
+
+
 
     for (size_t i = 0; i < objectPoints.size(); ++i)
     {

@@ -222,6 +222,7 @@ void FeatureTracker::rejectWithF()
         {
             Eigen::Vector3d tmp_p;
             m_camera->liftProjective(Eigen::Vector2d(cur_pts[i].x, cur_pts[i].y), tmp_p);
+            //深度归一化
             tmp_p.x() = FOCAL_LENGTH * tmp_p.x() / tmp_p.z() + COL / 2.0;
             tmp_p.y() = FOCAL_LENGTH * tmp_p.y() / tmp_p.z() + ROW / 2.0;
             un_cur_pts[i] = cv::Point2f(tmp_p.x(), tmp_p.y());

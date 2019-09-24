@@ -37,18 +37,18 @@ class PoseGraph
 public:
 	PoseGraph();
 	~PoseGraph();
-	void registerPub(ros::NodeHandle &n);
-	void addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop);
-	void loadKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop);
-	void loadVocabulary(std::string voc_path);
-	void updateKeyFrameLoop(int index, Eigen::Matrix<double, 8, 1 > &_loop_info);
-	KeyFrame* getKeyFrame(int index);
+	void registerPub(ros::NodeHandle &n); //发布轨迹path的topic
+	void addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop);//添加关键帧，完成了回环检测与闭环的过程
+	void loadKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop);//载入关键帧
+	void loadVocabulary(std::string voc_path);//加载Brief字典
+	void updateKeyFrameLoop(int index, Eigen::Matrix<double, 8, 1 > &_loop_info);//更新关键帧的回环信息
+	KeyFrame* getKeyFrame(int index); //返回索引为index的关键帧
 	nav_msgs::Path path[10];
 	nav_msgs::Path base_path;
 	CameraPoseVisualization* posegraph_visualization;
-	void savePoseGraph();
-	void loadPoseGraph();
-	void publish();
+	void savePoseGraph();//保存位姿图到file_path
+	void loadPoseGraph();//从file_path读取位姿图
+	void publish();//用于发布topic：pub_pg_path、pub_path、pub_base_path
 	Vector3d t_drift;
 	double yaw_drift;
 	Matrix3d r_drift;
@@ -58,10 +58,10 @@ public:
 
 
 private:
-	int detectLoop(KeyFrame* keyframe, int frame_index);
-	void addKeyFrameIntoVoc(KeyFrame* keyframe);
-	void optimize4DoF();
-	void updatePath();
+	int detectLoop(KeyFrame* keyframe, int frame_index);//回环检测
+	void addKeyFrameIntoVoc(KeyFrame* keyframe);//将当前帧的描述子存入字典数据库
+	void optimize4DoF();//四自由度位姿图优化函数
+	void updatePath();//更新轨迹并发布
 	list<KeyFrame*> keyframelist;
 	std::mutex m_keyframelist;
 	std::mutex m_optimize_buf;
@@ -86,6 +86,8 @@ private:
 	ros::Publisher pub_path[10];
 };
 
+
+
 template <typename T>
 T NormalizeAngle(const T& angle_degrees) {
   if (angle_degrees > T(180.0))
@@ -95,6 +97,8 @@ T NormalizeAngle(const T& angle_degrees) {
   else
   	return angle_degrees;
 };
+
+
 
 class AngleLocalParameterization {
  public:
@@ -113,6 +117,8 @@ class AngleLocalParameterization {
                                                      1, 1>);
   }
 };
+
+
 
 template <typename T> 
 void YawPitchRollToRotationMatrix(const T yaw, const T pitch, const T roll, T R[9])
@@ -134,6 +140,8 @@ void YawPitchRollToRotationMatrix(const T yaw, const T pitch, const T roll, T R[
 	R[8] = cos(p) * cos(r);
 };
 
+
+
 template <typename T> 
 void RotationMatrixTranspose(const T R[9], T inv_R[9])
 {
@@ -148,6 +156,9 @@ void RotationMatrixTranspose(const T R[9], T inv_R[9])
 	inv_R[8] = R[8];
 };
 
+
+
+
 template <typename T> 
 void RotationMatrixRotatePoint(const T R[9], const T t[3], T r_t[3])
 {
@@ -155,6 +166,8 @@ void RotationMatrixRotatePoint(const T R[9], const T t[3], T r_t[3])
 	r_t[1] = R[3] * t[0] + R[4] * t[1] + R[5] * t[2];
 	r_t[2] = R[6] * t[0] + R[7] * t[1] + R[8] * t[2];
 };
+
+
 
 struct FourDOFError
 {
@@ -199,6 +212,8 @@ struct FourDOFError
 	double relative_yaw, pitch_i, roll_i;
 
 };
+
+
 
 struct FourDOFWeightError
 {
