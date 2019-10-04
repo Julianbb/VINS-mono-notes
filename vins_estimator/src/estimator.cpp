@@ -247,7 +247,7 @@ bool Estimator::initialStructure()  //初始化
             sum_g += tmp_g;
         }
         Vector3d aver_g;
-        aver_g = sum_g * 1.0 / ((int)all_image_frame.size() - 1); 
+        aver_g = sum_g * 1.0 / ((int)all_image_frame.size() - 1); //这里并没有算上all_image_frame的第一帧，所以求均值和标准差的时候要减一
 
 
         double var = 0;
@@ -410,7 +410,7 @@ bool Estimator::visualInitialAlign()
         return false;
     }
 
-    // change state
+    // change state,获取所有图像帧的位姿Ps、Rs，并将其置为关键帧
     for (int i = 0; i <= frame_count; i++)
     {
         Matrix3d Ri = all_image_frame[Headers[i].stamp.toSec()].R;
@@ -420,12 +420,13 @@ bool Estimator::visualInitialAlign()
         all_image_frame[Headers[i].stamp.toSec()].is_key_frame = true;
     }
 
+    //将所有特征点的深度置为-1
     VectorXd dep = f_manager.getDepthVector();
     for (int i = 0; i < dep.size(); i++)
         dep[i] = -1;
     f_manager.clearDepth(dep);
-
-    //triangulat on cam pose , no tic
+    //重新计算所有特征点的深度
+    //triangulat on cam pose , no tic 
     Vector3d TIC_TMP[NUM_OF_CAM];
     for(int i = 0; i < NUM_OF_CAM; i++)
         TIC_TMP[i].setZero();
@@ -433,13 +434,16 @@ bool Estimator::visualInitialAlign()
     f_manager.setRic(ric);
     f_manager.triangulate(Ps, &(TIC_TMP[0]), &(RIC[0]));
 
+
+    //将Ps、Vs、depth尺度s缩放后转变为相对于第0帧图像坐标系下
     double s = (x.tail<1>())(0);
     for (int i = 0; i <= WINDOW_SIZE; i++)
     {
-        pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]);
+        pre_integrations[i]->repropagate(Vector3d::Zero(), Bgs[i]); // 得到bias重传播
     }
+
     for (int i = frame_count; i >= 0; i--)
-        Ps[i] = s * Ps[i] - Rs[i] * TIC[0] - (s * Ps[0] - Rs[0] * TIC[0]);
+        Ps[i] = s * Ps[i] - Rs[i] * TIC[0] - (s * Ps[0] - Rs[0] * TIC[0]); //
     int kv = -1;
     map<double, ImageFrame>::iterator frame_i;
     for (frame_i = all_image_frame.begin(); frame_i != all_image_frame.end(); frame_i++)
@@ -450,7 +454,8 @@ bool Estimator::visualInitialAlign()
             Vs[kv] = frame_i->second.R * x.segment<3>(kv * 3);
         }
     }
-    for (auto &it_per_id : f_manager.feature)
+
+    for (auto &it_per_id : f_manager.feature) //跟新深度信息
     {
         it_per_id.used_num = it_per_id.feature_per_frame.size();
         if (!(it_per_id.used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
@@ -458,10 +463,14 @@ bool Estimator::visualInitialAlign()
         it_per_id.estimated_depth *= s;
     }
 
+
+    //通过将重力旋转到z轴上，得到世界坐标系与摄像机坐标系c0之间的旋转矩阵rot_diff
     Matrix3d R0 = Utility::g2R(g);
     double yaw = Utility::R2ypr(R0 * Rs[0]).x();
     R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
     g = R0 * g;
+
+    //所有变量从参考坐标系c0旋转到世界坐标系w
     //Matrix3d rot_diff = R0 * Rs[0].transpose();
     Matrix3d rot_diff = R0;
     for (int i = 0; i <= frame_count; i++)
