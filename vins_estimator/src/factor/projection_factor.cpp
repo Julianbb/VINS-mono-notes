@@ -69,7 +69,7 @@ bool ProjectionFactor::Evaluate(double const *const *parameters, double *residua
         reduce << 1. / dep_j, 0, -pts_camera_j(0) / (dep_j * dep_j),
             0, 1. / dep_j, -pts_camera_j(1) / (dep_j * dep_j);
 #endif
-        reduce = sqrt_info * reduce; // TODO: 目的?
+        reduce = sqrt_info * reduce; // jacobian 左边需要乘以 根号 信息矩阵
 
         if (jacobians[0]) //对 pose i
         {

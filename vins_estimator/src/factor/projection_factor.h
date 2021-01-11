@@ -1,3 +1,10 @@
+/*
+ * @Description: 
+ * @Author: julian
+ * @E-mail: 1546450025@qq.com
+ * @Date: 2019-12-03 16:56:31
+ * @LastEditTime: 2021-01-11 12:00:08
+ */
 #pragma once
 
 #include <ros/assert.h>
@@ -7,7 +14,7 @@
 #include "../utility/tic_toc.h"
 #include "../parameters.h"
 
-class ProjectionFactor : public ceres::SizedCostFunction<2, 7, 7, 7, 1> // 残差是2维， 优化变量的维度:    pose_i pose_j  ,逆深度
+class ProjectionFactor : public ceres::SizedCostFunction<2, 7, 7, 7, 1> // 残差是2维、 pose_i、 pose_j、 外参、逆深度
 {
   public:
     ProjectionFactor(const Eigen::Vector3d &_pts_i, const Eigen::Vector3d &_pts_j);

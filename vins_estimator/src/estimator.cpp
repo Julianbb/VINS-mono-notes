@@ -175,7 +175,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 
     if (solver_flag == INITIAL) //是否需要初始化
     {
-        if (frame_count == WINDOW_SIZE) //只有帧数到达 窗口的数量才进行
+        if (frame_count == WINDOW_SIZE) //只有帧数到达窗口的数量才进行
         {
             bool result = false;
             if( ESTIMATE_EXTRINSIC != 2 && (header.stamp.toSec() - initial_timestamp) > 0.1)
@@ -236,7 +236,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 bool Estimator::initialStructure()  //初始化
 {
     TicToc t_sfm;
-    //check imu observibility TODO:可观性的检测?
+    //check imu observibility TODO:可观性的检测:举个极端例子，如果匀速运动，加速度计只能测重力，这样尺度不具有可观性，没法恢复
     {
         map<double, ImageFrame>::iterator frame_it;
         Vector3d sum_g;

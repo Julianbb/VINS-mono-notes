@@ -9,7 +9,7 @@
 
 #include <ceres/ceres.h>
 
-class IMUFactor : public ceres::SizedCostFunction<15, 7, 9, 7, 9>  //残差的维度、i时刻 pose jacobian维度， i时刻 v, ba, bg维度， j时刻。。。
+class IMUFactor : public ceres::SizedCostFunction<15, 7, 9, 7, 9>  //残差的维度、i时刻 pose维度、 i时刻 v, ba, bg维度； j时刻。。。
 {
   public:
     IMUFactor() = delete;
@@ -61,9 +61,9 @@ class IMUFactor : public ceres::SizedCostFunction<15, 7, 9, 7, 9>  //残差的�
         residual = pre_integration->evaluate(Pi, Qi, Vi, Bai, Bgi,
                                             Pj, Qj, Vj, Baj, Bgj); // 计算residual
 
-        // TODO: sqrt_info 的作用?
+        
         Eigen::Matrix<double, 15, 15> sqrt_info = Eigen::LLT<Eigen::Matrix<double, 15, 15>>(pre_integration->covariance.inverse()).matrixL().transpose();
-        residual = sqrt_info * residual;
+        residual = sqrt_info * residual; //sqrt_info信息矩阵开根号
 
         if (jacobians) // 如果不为nullptr(合法),计算残差对i j时刻的 p v q ba bg求导
         {

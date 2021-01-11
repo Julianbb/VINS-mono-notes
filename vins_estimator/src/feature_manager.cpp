@@ -44,7 +44,7 @@ int FeatureManager::getFeatureCount()
 }
 
 
-//
+//每收到一帧图像时，先添加特征点，再进行视差检查，来决定marg最老帧还是次新帧
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
     ROS_DEBUG("input feature: %d", (int)image.size());
@@ -69,7 +69,7 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
 
         if (it == feature.end()) // 如果没找到，如果该Feature不在Features列表中，则将<FeatureID,Start_frame>存入到Feature列表中
         {
-            feature.push_back(FeaturePerId(feature_id, frame_count));
+            feature.push_back(FeaturePerId(feature_id, frame_count));// id start_frame
             feature.back().feature_per_frame.push_back(f_per_fra);//将观测帧 保存
         }
         else if (it->feature_id == feature_id)

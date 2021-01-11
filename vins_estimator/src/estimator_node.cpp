@@ -323,9 +323,9 @@ void process()
             map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> image;
             for (unsigned int i = 0; i < img_msg->points.size(); i++)
             {
-                int v = img_msg->channels[0].values[i] + 0.5;
-                int feature_id = v / NUM_OF_CAM;
-                int camera_id = v % NUM_OF_CAM;
+                int v = img_msg->channels[0].values[i] + 0.5;   //这里的v是多相机的总的id
+                int feature_id = v / NUM_OF_CAM;  //同一帧特征点，v编号不同，feature_id相同 
+                int camera_id = v % NUM_OF_CAM;  // camera_id不同
                 double x = img_msg->points[i].x;
                 double y = img_msg->points[i].y;
                 double z = img_msg->points[i].z;
