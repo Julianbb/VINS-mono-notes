@@ -75,7 +75,7 @@ KeyFrame::KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3
 }
 
 
-
+//计算窗口中所有特征点的描述子
 void KeyFrame::computeWindowBRIEFPoint()
 {
 	BriefExtractor extractor(BRIEF_PATTERN_FILE.c_str());
@@ -89,7 +89,7 @@ void KeyFrame::computeWindowBRIEFPoint()
 }
 
 
-
+//因为后边要做闭环检测，前端提取的关键点数太少，这里从图像image中提取500个角点
 void KeyFrame::computeBRIEFPoint()
 {
 	BriefExtractor extractor(BRIEF_PATTERN_FILE.c_str());
@@ -99,7 +99,7 @@ void KeyFrame::computeBRIEFPoint()
 	else
 	{
 		vector<cv::Point2f> tmp_pts;
-		cv::goodFeaturesToTrack(image, tmp_pts, 500, 0.01, 10);
+		cv::goodFeaturesToTrack(image, tmp_pts, 500, 0.01, 10);//Shi Tomasi算法检测角点
 		for(int i = 0; i < (int)tmp_pts.size(); i++)
 		{
 		    cv::KeyPoint key;
@@ -126,7 +126,7 @@ void BriefExtractor::operator() (const cv::Mat &im, vector<cv::KeyPoint> &keys, 
 }
 
 
-
+//关键帧中某个特征点的描述子与回环帧的所有描述子匹配,得到最佳匹配点(像素和归一化plane)
 bool KeyFrame::searchInAera(const BRIEF::bitset window_descriptor,
                             const std::vector<BRIEF::bitset> &descriptors_old,
                             const std::vector<cv::KeyPoint> &keypoints_old,
@@ -159,7 +159,7 @@ bool KeyFrame::searchInAera(const BRIEF::bitset window_descriptor,
 }
 
 
-
+//将此关键帧window_brief_descriptors与某个回环帧进行BRIEF描述子匹配
 void KeyFrame::searchByBRIEFDes(std::vector<cv::Point2f> &matched_2d_old,
 								std::vector<cv::Point2f> &matched_2d_old_norm,
                                 std::vector<uchar> &status,
@@ -270,7 +270,8 @@ void KeyFrame::PnPRANSAC(const vector<cv::Point2f> &matched_2d_old_norm,
 
 }
 
-
+//判断当前帧和候选帧之前是否真的为回环，建立关键帧与回环帧之间的匹配关系,剔除ouelier，
+//如果最后匹配点> MIN_LOOP_NUM 返回True即为确定构成回环
 bool KeyFrame::findConnection(KeyFrame* old_kf)
 {
 	TicToc tmp_t;
@@ -313,6 +314,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	    }
 	#endif
 	//printf("search by des\n");
+	//当前关键帧与闭环候选帧进行BRIEF描述子匹配，这里相当于是在2d-2d之间进行匹配
 	searchByBRIEFDes(matched_2d_old, matched_2d_old_norm, status, old_kf->brief_descriptors, old_kf->keypoints, old_kf->keypoints_norm);
 	reduceVector(matched_2d_cur, status);
 	reduceVector(matched_2d_old, status);
@@ -418,7 +420,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	Eigen::Vector3d relative_t;
 	Quaterniond relative_q;
 	double relative_yaw;
-	if ((int)matched_2d_cur.size() > MIN_LOOP_NUM)
+	if ((int)matched_2d_cur.size() > MIN_LOOP_NUM)//MIN_LOOP_NUM值为25是最小闭环匹配点数，表示要判定为闭环得有大于25个2d特征点相匹配
 	{
 		status.clear();
 	    PnPRANSAC(matched_2d_old_norm, matched_3d, status, PnP_T_old, PnP_R_old);
@@ -429,7 +431,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	    reduceVector(matched_3d, status);
 	    reduceVector(matched_id, status);
 	    #if 1
-	    	if (DEBUG_IMAGE)  //画图
+	    	if (DEBUG_IMAGE)  //画图,匹配特征点之间连接
 	        {
 	        	int gap = 10;
 	        	cv::Mat gap_image(ROW, gap, CV_8UC1, cv::Scalar(255, 255, 255));
@@ -534,7 +536,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	return false;
 }
 
-
+//计算两个描述子之间的汉明距离
 int KeyFrame::HammingDis(const BRIEF::bitset &a, const BRIEF::bitset &b)
 {
     BRIEF::bitset xor_of_bitset = a ^ b;

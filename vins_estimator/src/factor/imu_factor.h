@@ -62,7 +62,7 @@ class IMUFactor : public ceres::SizedCostFunction<15, 7, 9, 7, 9>  //残差的�
                                             Pj, Qj, Vj, Baj, Bgj); // 计算residual
 
         
-        Eigen::Matrix<double, 15, 15> sqrt_info = Eigen::LLT<Eigen::Matrix<double, 15, 15>>(pre_integration->covariance.inverse()).matrixL().transpose();
+        Eigen::Matrix<double, 15, 15> sqrt_info = Eigen::LLT<Eigen::Matrix<double, 15, 15>>(pre_integration->covariance.inverse()).matrixL().transpose();//Eigen::LLT矩阵分解为：下三角矩阵L和其转置的乘积
         residual = sqrt_info * residual; //sqrt_info信息矩阵开根号
 
         if (jacobians) // 如果不为nullptr(合法),计算残差对i j时刻的 p v q ba bg求导

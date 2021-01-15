@@ -774,7 +774,7 @@ void Estimator::optimization()
 
 
     TicToc t_whole, t_prepare;
-    vector2double();
+    vector2double();//！将优化量存入数组，ceres用的是double类型
 
     // step 2.1 添加边缘化的残差
     if (last_marginalization_info)
@@ -1143,7 +1143,7 @@ void Estimator::slideWindow()
             linear_acceleration_buf[WINDOW_SIZE].clear();
             angular_velocity_buf[WINDOW_SIZE].clear();
 
-            if (true || solver_flag == INITIAL) //?? 这个不是肯定执行吗？ wtf?????
+            if (true || solver_flag == INITIAL) 
             {
                 map<double, ImageFrame>::iterator it_0;
                 it_0 = all_image_frame.find(t_0);

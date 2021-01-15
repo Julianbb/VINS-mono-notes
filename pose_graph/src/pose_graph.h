@@ -99,7 +99,7 @@ T NormalizeAngle(const T& angle_degrees) {
 };
 
 
-
+//yaw角的跟新迭代方式
 class AngleLocalParameterization {
  public:
 
@@ -190,12 +190,12 @@ struct FourDOFError
 		RotationMatrixTranspose(w_R_i, i_R_w);
 		// rotation matrix rotate point
 		T t_i_ij[3];
-		RotationMatrixRotatePoint(i_R_w, t_w_ij, t_i_ij);
+		RotationMatrixRotatePoint(i_R_w, t_w_ij, t_i_ij);//将优化变量得到的 tij(w系) -> tij(i系)
 
 		residuals[0] = (t_i_ij[0] - T(t_x));
 		residuals[1] = (t_i_ij[1] - T(t_y));
 		residuals[2] = (t_i_ij[2] - T(t_z));
-		residuals[3] = NormalizeAngle(yaw_j[0] - yaw_i[0] - T(relative_yaw));
+		residuals[3] = NormalizeAngle(yaw_j[0] - yaw_i[0] - T(relative_yaw));//返回值 -180至180之间
 
 		return true;
 	}

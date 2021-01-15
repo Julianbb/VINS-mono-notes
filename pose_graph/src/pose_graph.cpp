@@ -74,6 +74,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
     }
     else
     {
+        //不进行闭环检测，则直接将当前关键帧加入到词典当中
         addKeyFrameIntoVoc(cur_kf);
     }
 
@@ -119,11 +120,11 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
                 w_t_vio = shift_t;
                 vio_P_cur = w_r_vio * vio_P_cur + w_t_vio;
                 vio_R_cur = w_r_vio *  vio_R_cur;
-                cur_kf->updateVioPose(vio_P_cur, vio_R_cur);
+                cur_kf->updateVioPose(vio_P_cur, vio_R_cur);//根据偏移量shift_r shift_t跟新当前关键帧的vio位姿
                 list<KeyFrame*>::iterator it = keyframelist.begin();
-                for (; it != keyframelist.end(); it++)   
+                for (; it != keyframelist.end(); it++)   //遍历keyframelist每一个keyframe
                 {
-                    if((*it)->sequence == cur_kf->sequence)
+                    if((*it)->sequence == cur_kf->sequence)//如果是在相同序列，通过偏移量shift_r shift_t更新他们vio位姿
                     {
                         Vector3d vio_P_cur;
                         Matrix3d vio_R_cur;
@@ -137,7 +138,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
             }
             // step4.4: 将当前帧放入优化队列中
             m_optimize_buf.lock();
-            optimize_buf.push(cur_kf->index);
+            optimize_buf.push(cur_kf->index);//在另一个单独创建的线程中进行优化，（optimize_buf不为空就启动优化）
             m_optimize_buf.unlock();
         }
 	}
@@ -185,7 +186,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
     }
     //draw local connection
     // step8: 绘制可视化轨迹中帧间的连线
-    if (SHOW_S_EDGE)
+    if (SHOW_S_EDGE)//sequential edge(前面4个关键帧之间连线)
     {
         list<KeyFrame*>::reverse_iterator rit = keyframelist.rbegin();
         for (int i = 0; i < 4; i++)
@@ -202,7 +203,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
             rit++;
         }
     }
-    if (SHOW_L_EDGE)
+    if (SHOW_L_EDGE)//loop edge，loop帧之间连线
     {
         if (cur_kf->has_loop)
         {
@@ -229,7 +230,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
 	m_keyframelist.unlock();
 }
 
-
+//加载位姿图时候，loadKeyFrame时候不需要进行回环检测
 void PoseGraph::loadKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
 {
     cur_kf->index = global_index;
@@ -482,7 +483,7 @@ void PoseGraph::optimize4DoF()
             loss_function = new ceres::HuberLoss(0.1);
             //loss_function = new ceres::CauchyLoss(1.0);
             ceres::LocalParameterization* angle_local_parameterization =
-                AngleLocalParameterization::Create();
+                AngleLocalParameterization::Create();//指定yaw角优化变量的迭代更新方式
 
             list<KeyFrame*>::iterator it;
 
@@ -490,7 +491,7 @@ void PoseGraph::optimize4DoF()
             for (it = keyframelist.begin(); it != keyframelist.end(); it++)
             {
                 if ((*it)->index < first_looped_index)
-                    continue;
+                    continue;//需要优化的关键帧为从第一次闭环帧到当前帧间的所有关键帧
                 (*it)->local_index = i;
                 Quaterniond tmp_q;
                 Matrix3d tmp_r;
@@ -509,23 +510,33 @@ void PoseGraph::optimize4DoF()
 
                 sequence_array[i] = (*it)->sequence;
 
-                problem.AddParameterBlock(euler_array[i], 1, angle_local_parameterization);
+                //add point
+                problem.AddParameterBlock(euler_array[i], 1, angle_local_parameterization);//优化变量+维度  
                 problem.AddParameterBlock(t_array[i], 3);
 
-                if ((*it)->index == first_looped_index || (*it)->sequence == 0) // 固定优化的第一帧
+                if ((*it)->index == first_looped_index || (*it)->sequence == 0) // 固定优化的第一帧（闭环帧）
                 {   
                     problem.SetParameterBlockConstant(euler_array[i]);
                     problem.SetParameterBlockConstant(t_array[i]);
                 }
-
+               /**
+                 * 顺序边的测量方程：p̂_{ij}^{j} = {R̂_wb}^{-1} (p̂_i^w - p̂_j^w)
+                 *                \hat{ψ}_ij = \hat{ψ}_i − \hat{ψ̂}_j
+                 *  两个关键帧之间的相对位姿，由两个关键帧之间的VIO位姿估计变换得到
+                 *   |------------------------------------|
+                 *   |       |----------------------------|
+                 *   |       |        |-------------------|
+                 *   |       |        |         |---------|
+                 * |帧1|    |帧2|    |帧3|     |帧4|     |帧5|
+                */
                 //add edge(sequentail edge)
-                for (int j = 1; j < 5; j++) //和前面5个keyframe的 边
+                for (int j = 1; j < 5; j++) //和前面4个keyframe的边
                 {
-                  if (i - j >= 0 && sequence_array[i] == sequence_array[i-j])
+                  if (i - j >= 0 && sequence_array[i] == sequence_array[i-j]) //i-j == 前1..4帧
                   {
                     Vector3d euler_conncected = Utility::R2ypr(q_array[i-j].toRotationMatrix());
                     Vector3d relative_t(t_array[i][0] - t_array[i-j][0], t_array[i][1] - t_array[i-j][1], t_array[i][2] - t_array[i-j][2]);
-                    relative_t = q_array[i-j].inverse() * relative_t;
+                    relative_t = q_array[i-j].inverse() * relative_t;//j系下
                     double relative_yaw = euler_array[i][0] - euler_array[i-j][0];
                     ceres::CostFunction* cost_function = FourDOFError::Create( relative_t.x(), relative_t.y(), relative_t.z(),
                                                    relative_yaw, euler_conncected.y(), euler_conncected.z());
@@ -560,7 +571,7 @@ void PoseGraph::optimize4DoF()
                 i++;
             }
             m_keyframelist.unlock();
-
+            //开始优化
             ceres::Solve(options, &problem, &summary);
             //std::cout << summary.BriefReport() << "\n";
             
@@ -573,6 +584,7 @@ void PoseGraph::optimize4DoF()
             */
             m_keyframelist.lock();
             i = 0;
+            //优化完成，使用优化后的位姿来更新关键帧列表中index大于等于first_looped_index的所有关键帧的位姿
             for (it = keyframelist.begin(); it != keyframelist.end(); it++)
             {
                 if ((*it)->index < first_looped_index)
@@ -587,7 +599,7 @@ void PoseGraph::optimize4DoF()
                     break;
                 i++;
             }
-
+            //根据计算出当前帧的drift，更新当前帧之后的关键帧位姿
             Vector3d cur_t, vio_t;
             Matrix3d cur_r, vio_r;
             cur_kf->getPose(cur_t, cur_r);
@@ -739,7 +751,7 @@ void PoseGraph::updatePath()
 
 
 
-
+//保存位姿图
 void PoseGraph::savePoseGraph()
 {
     m_keyframelist.lock();
@@ -797,7 +809,7 @@ void PoseGraph::savePoseGraph()
 }
 
 
-
+//加载位姿图
 void PoseGraph::loadPoseGraph()
 {
     TicToc tmp_t;
@@ -906,7 +918,7 @@ void PoseGraph::loadPoseGraph()
         fclose(keypoints_file);
 
         KeyFrame* keyframe = new KeyFrame(time_stamp, index, VIO_T, VIO_R, PG_T, PG_R, image, loop_index, loop_info, keypoints, keypoints_norm, brief_descriptors);
-        loadKeyFrame(keyframe, 0);
+        loadKeyFrame(keyframe, 0);//加载新构造的关键帧
         if (cnt % 20 == 0)
         {
             publish();

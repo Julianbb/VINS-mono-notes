@@ -37,6 +37,7 @@ public:
 	KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3d &_vio_R_w_i, cv::Mat &_image,
 			 vector<cv::Point3f> &_point_3d, vector<cv::Point2f> &_point_2d_uv, vector<cv::Point2f> &_point_2d_normal, 
 			 vector<double> &_point_id, int _sequence);
+
 	KeyFrame(double _time_stamp, int _index, Vector3d &_vio_T_w_i, Matrix3d &_vio_R_w_i, Vector3d &_T_w_i, Matrix3d &_R_w_i,
 			 cv::Mat &_image, int _loop_index, Eigen::Matrix<double, 8, 1 > &_loop_info,
 			 vector<cv::KeyPoint> &_keypoints, vector<cv::KeyPoint> &_keypoints_norm, vector<BRIEF::bitset> &_brief_descriptors);
@@ -86,32 +87,32 @@ public:
 
 
 
-	double time_stamp; 
-	int index; //关键帧的 全局索引
-	int local_index;
-	Eigen::Vector3d vio_T_w_i; 
+	double time_stamp; //关键帧的时间戳
+	int index; //关键帧的全局索引
+	int local_index;//此关键帧在 两个回环帧之间的local index，比如 有1-10帧，当前是第5帧，4和10帧构成闭环，那么当前帧的local index为1，在optimize4DoF里赋值
+	Eigen::Vector3d vio_T_w_i; //
 	Eigen::Matrix3d vio_R_w_i; 
 	Eigen::Vector3d T_w_i;
 	Eigen::Matrix3d R_w_i;
 	Eigen::Vector3d origin_vio_T;		
 	Eigen::Matrix3d origin_vio_R;
 
-	cv::Mat image;
+	cv::Mat image;//关键帧的图像
 	cv::Mat thumbnail;
-	vector<cv::Point3f> point_3d; 
-	vector<cv::Point2f> point_2d_uv;
-	vector<cv::Point2f> point_2d_norm;
-	vector<double> point_id;
-	vector<cv::KeyPoint> keypoints;
-	vector<cv::KeyPoint> keypoints_norm; //KeyPoint: 归一化平面 
-	vector<cv::KeyPoint> window_keypoints;
-	vector<BRIEF::bitset> brief_descriptors;
-	vector<BRIEF::bitset> window_brief_descriptors;
+	vector<cv::Point3f> point_3d; //关键帧能观测到的3d点
+	vector<cv::Point2f> point_2d_uv;//关键帧相机平面的2d点
+	vector<cv::Point2f> point_2d_norm;//关键帧上3d点归一化后的坐标
+	vector<double> point_id;//特征点id
+	vector<cv::KeyPoint> keypoints;//新提取的fast角点
+	vector<cv::KeyPoint> keypoints_norm; //新提取的fast角点： 归一化平面 
+	vector<cv::KeyPoint> window_keypoints;//此关键帧原本特征点（point_2d_uv）
+	vector<BRIEF::bitset> brief_descriptors;//新提取角点计算的描述子
+	vector<BRIEF::bitset> window_brief_descriptors;//window_keypoints计算的描述子
 	bool has_fast_point;
-	int sequence; 
+	int sequence; //图像序列，默认为1，pose_graph_node.cpp中创建关键帧的时候传入
 
-	bool has_loop;
-	int loop_index;
-	Eigen::Matrix<double, 8, 1 > loop_info;
+	bool has_loop;//当前帧是否存在闭环帧
+	int loop_index;//闭环真的idx
+	Eigen::Matrix<double, 8, 1 > loop_info;//与闭环帧之间的信息：relative_t(3) relative_r(4) relative_yaw(1)
 };
 

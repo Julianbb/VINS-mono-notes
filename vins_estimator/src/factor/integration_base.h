@@ -178,11 +178,11 @@ class IntegrationBase
         Eigen::Matrix3d dv_dba = jacobian.block<3, 3>(O_V, O_BA);
         Eigen::Matrix3d dv_dbg = jacobian.block<3, 3>(O_V, O_BG);
 
-        // TODO: Bai 和  linearized_xx 产生变化在什么地方? ,linearized_x在预积分的过程中不是一直不变么?
+        // linearized_ba是不变的，Bai是在优化过程中变化的
         Eigen::Vector3d dba = Bai - linearized_ba;
         Eigen::Vector3d dbg = Bgi - linearized_bg;
 
-        // i->j的预积分的增量,这里为了计算方便都做了一个泰勒近似
+        // i->j的预积分的修正,这里为了计算方便都做了一个泰勒近似
         Eigen::Quaterniond corrected_delta_q = delta_q * Utility::deltaQ(dq_dbg * dbg);
         Eigen::Vector3d corrected_delta_v = delta_v + dv_dba * dba + dv_dbg * dbg;
         Eigen::Vector3d corrected_delta_p = delta_p + dp_dba * dba + dp_dbg * dbg;

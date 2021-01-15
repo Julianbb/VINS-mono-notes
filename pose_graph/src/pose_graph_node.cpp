@@ -369,13 +369,13 @@ void process()
             //printf(" point time %f \n", point_msg->header.stamp.toSec());
             //printf(" image time %f \n", image_msg->header.stamp.toSec());
             // skip fisrt few
-            if (skip_first_cnt < SKIP_FIRST_CNT)
+            if (skip_first_cnt < SKIP_FIRST_CNT)//剔除掉了前SKIP_FIRST_CNT（值为10）帧数据
             {
                 skip_first_cnt++;
                 continue;
             }
 
-            if (skip_cnt < SKIP_CNT)
+            if (skip_cnt < SKIP_CNT)//SKIP_CNT在euroc.launch中为0，意思是获取间隔skip_cnt帧
             {
                 skip_cnt++;
                 continue;
@@ -386,7 +386,7 @@ void process()
             }
 
             cv_bridge::CvImageConstPtr ptr;
-            if (image_msg->encoding == "8UC1")
+            if (image_msg->encoding == "8UC1")//解析image_msg信息存入ptr变量当中
             {
                 sensor_msgs::Image img;
                 img.header = image_msg->header;
@@ -419,7 +419,7 @@ void process()
                 vector<cv::Point2f> point_2d_normal;
                 vector<double> point_id;
 
-                for (unsigned int i = 0; i < point_msg->points.size(); i++)
+                for (unsigned int i = 0; i < point_msg->points.size(); i++)//遍历点云消息中的点
                 {
                     cv::Point3f p_3d;
                     p_3d.x = point_msg->points[i].x;
@@ -445,13 +445,13 @@ void process()
                                    point_3d, point_2d_uv, point_2d_normal, point_id, sequence);   
                 m_process.lock();
                 start_flag = 1;
-                posegraph.addKeyFrame(keyframe, 1);
+                posegraph.addKeyFrame(keyframe, 1);//位姿图中加入关键帧，flag_detect_loop设置为1
                 m_process.unlock();
-                frame_index++;
+                frame_index++; //关键帧的idx
                 last_t = T;
             }
         }
-
+        //线程休眠5ms
         std::chrono::milliseconds dura(5);
         std::this_thread::sleep_for(dura);
     }
